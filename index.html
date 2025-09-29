@@ -665,18 +665,20 @@
         }
 
         function drawAt(x, y) {
-            // Draw with finger/mouse
+            // Draw with finger/mouse - much bigger brush
             ctx.fillStyle = '#FF6B6B';
             ctx.beginPath();
-            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.arc(x, y, 25, 0, Math.PI * 2);
             ctx.fill();
             
-            // Track traced pixels
-            const pixelKey = `${Math.floor(x / 5)}-${Math.floor(y / 5)}`;
-            if (!tracedPixels.has(pixelKey)) {
-                tracedPixels.add(pixelKey);
-                updateProgress();
+            // Track traced pixels with bigger detection area
+            for (let dx = -3; dx <= 3; dx++) {
+                for (let dy = -3; dy <= 3; dy++) {
+                    const pixelKey = `${Math.floor((x + dx * 5) / 5)}-${Math.floor((y + dy * 5) / 5)}`;
+                    tracedPixels.add(pixelKey);
+                }
             }
+            updateProgress();
         }
 
         function updateProgress() {
@@ -685,6 +687,7 @@
             
             console.log('Progress:', progress, 'Hint shown:', hintShown); // Debug
             
+            // Back to 70% for appropriate challenge
             if (progress >= 70 && !hintShown) {
                 console.log('Completing tracing!'); // Debug
                 completeTracing();
