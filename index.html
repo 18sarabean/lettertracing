@@ -393,9 +393,9 @@
         let currentLetter = 'A';
         let canvas, ctx;
         let isDrawing = false;
-        let tracedPixels = new Set();
         let totalPixelsToTrace = 0;
         let hintShown = false;
+        let outlinePixels = [];
 
         // Audio elements (will fall back to default sounds if custom files don't exist)
         let correctSound, incorrectSound;
@@ -588,8 +588,6 @@
         }
 
         function calculateTracingArea() {
-            tracedPixels.clear();
-            
             // Create a temporary canvas to calculate the letter area
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
@@ -604,14 +602,17 @@
             tempCtx.strokeStyle = 'black';
             tempCtx.strokeText(displayLetter, canvas.width / 2, canvas.height / 2);
             
-            // Count pixels in letter outline
+            // Collect outline pixel positions
             const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
-            let count = 0;
-            for (let i = 3; i < imageData.data.length; i += 4) {
-                if (imageData.data[i] > 0) count++;
+            outlinePixels = [];
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                if (imageData.data[i + 3] > 0) {  // Any non-transparent pixel
+                    const x = (i / 4) % canvas.width;
+                    const y = Math.floor((i / 4) / canvas.width);
+                    outlinePixels.push({x, y});
+                }
             }
-            
-            totalPixelsToTrace = count;
+            totalPixelsToTrace = outlinePixels.length;
             updateProgress();
         }
 
@@ -665,30 +666,32 @@
         }
 
         function drawAt(x, y) {
-            // Draw with finger/mouse - much bigger brush
             ctx.fillStyle = '#FF6B6B';
             ctx.beginPath();
             ctx.arc(x, y, 20, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Track traced pixels with bigger detection area
-            for (let dx = -3; dx <= 3; dx++) {
-                for (let dy = -3; dy <= 3; dy++) {
-                    const pixelKey = `${Math.floor((x + dx * 5) / 5)}-${Math.floor((y + dy * 5) / 5)}`;
-                    tracedPixels.add(pixelKey);
-                }
-            }
             updateProgress();
         }
 
         function updateProgress() {
-            const progress = Math.min(100, Math.floor((tracedPixels.size / (totalPixelsToTrace / 20)) * 100));
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let coveredCount = 0;
+            for (let pixel of outlinePixels) {
+                const index = (pixel.y * canvas.width + pixel.x) * 4;
+                // Detect red drawing (tolerant to slight blending/anti-aliasing)
+                if (imageData.data[index] > 200 &&  // High red
+                    imageData.data[index + 1] < 150 &&  // Low green
+                    imageData.data[index + 2] < 150 &&  // Low blue
+                    imageData.data[index + 3] > 200) {  // Opaque
+                    coveredCount++;
+                }
+            }
+            const progress = Math.min(100, Math.floor((coveredCount / totalPixelsToTrace) * 100));
             document.getElementById('progressIndicator').textContent = `Progress: ${progress}% ✏️`;
             
             console.log('Progress:', progress, 'Hint shown:', hintShown); // Debug
             
-            // Back to 70% for appropriate challenge
-            if (progress >= 70 && !hintShown) {
+            if (progress >= 80 && !hintShown) {  // Adjusted to 80 for stricter completion
                 console.log('Completing tracing!'); // Debug
                 completeTracing();
             }
@@ -747,7 +750,6 @@
 
         function clearCanvas() {
             console.log('Clear canvas called'); // Debug
-            tracedPixels.clear();
             hintShown = false;
             
             // Hide object
