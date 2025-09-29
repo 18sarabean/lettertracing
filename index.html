@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Tracing Magic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #FFE135 0%, #FFA500 50%, #FF6B6B 100%);
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FF6B6B, #FF4757);
+            padding: 15px 20px;
+            border-bottom: 4px solid #FFE135;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            min-height: 80px;
+        }
+
+        .logo-container {
+            height: 50px;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            max-height: 100%;
+            max-width: 150px;
+            object-fit: contain;
+        }
+
+        .game-title {
+            font-size: clamp(20px, 4vw, 32px);
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-size: clamp(16px, 3vw, 20px);
+            font-weight: bold;
+            color: #FF4757;
+        }
+
+        .case-toggle {
+            display: flex;
+            gap: 5px;
+        }
+
+        .case-button {
+            font-size: clamp(16px, 3vw, 20px);
+            font-weight: bold;
+            padding: 10px 20px;
+            border: 3px solid #4169E1;
+            border-radius: 12px;
+            background: white;
+            color: #4169E1;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .case-button.active {
+            background: #4169E1;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .letter-selector {
+            display: flex;
+            gap: 8px;
+            max-width: 90vw;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        .letter-button {
+            font-size: clamp(18px, 3.5vw, 24px);
+            font-weight: 900;
+            padding: 8px 12px;
+            border: 3px solid #FF6B6B;
+            border-radius: 10px;
+            background: white;
+            color: #FF6B6B;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 40px;
+            touch-action: manipulation;
+        }
+
+        .letter-button.active {
+            background: #FF6B6B;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .letter-button:hover,
+        .letter-button:active {
+            transform: scale(1.05);
+        }
+
+        .tracing-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: white;
+            border: 6px solid #4169E1;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            max-width: 90vw;
+            max-height: 60vh;
+        }
+
+        #tracingCanvas {
+            display: block;
+            touch-action: none;
+            border-radius: 14px;
+        }
+
+        .letter-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 300px;
+            font-weight: 900;
+            color: rgba(65, 105, 225, 0.15);
+            pointer-events: none;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .object-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 200px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s ease-out;
+        }
+
+        .object-display.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .progress-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid #FFE135;
+            font-size: clamp(16px, 3vw, 20px);
+            font-weight: bold;
+            color: #FF4757;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .controls-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .action-button {
+            font-size: clamp(16px, 3vw, 20px);
+            font-weight: bold;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            touch-action: manipulation;
+        }
+
+        .clear-button {
+            background: linear-gradient(135deg, #FF6B6B, #FF4757);
+            border: 3px solid white;
+        }
+
+        .hint-button {
+            background: linear-gradient(135deg, #FFE135, #FFA500);
+            border: 3px solid white;
+            color: #333;
+        }
+
+        .action-button:hover,
+        .action-button:active {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .celebration {
+            position: absolute;
+            pointer-events: none;
+            font-size: 40px;
+            animation: celebrate 2s ease-out forwards;
+        }
+
+        @keyframes celebrate {
+            0% {
+                transform: translate(0, 0) scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(var(--dx), var(--dy)) scale(1.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--dx), calc(var(--dy) - 100px)) scale(1);
+                opacity: 0;
+            }
+        }
+
+        .success-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(32px, 6vw, 48px);
+            font-weight: bold;
+            color: #4169E1;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 4px solid #FFE135;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            animation: successPop 2s ease-out forwards;
+        }
+
+        @keyframes successPop {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 1;
+            }
+            80% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 10px;
+                min-height: auto;
+            }
+
+            .controls {
+                flex-direction: column;
+                padding: 10px;
+            }
+
+            .letter-guide {
+                font-size: 200px;
+            }
+
+            .object-display {
+                font-size: 150px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .letter-guide {
+                font-size: 150px;
+            }
+
+            .object-display {
+                font-size: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <div class="logo-container">
+                <img src="granny-bean-logo.png" alt="Granny Bean" class="logo" id="gameLogo">
+            </div>
+            <div class="game-title">✨ Letter Tracing Magic ✨</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <span class="control-label">Choose:</span>
+                <div class="case-toggle">
+                    <button class="case-button active" onclick="toggleCase('upper')">ABC</button>
+                    <button class="case-button" onclick="toggleCase('lower')">abc</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="letter-selector" id="letterSelector"></div>
+        </div>
+
+        <div class="tracing-area">
+            <div class="progress-indicator" id="progressIndicator">Start Tracing! ✏️</div>
+            
+            <div class="canvas-container">
+                <div class="letter-guide" id="letterGuide">A</div>
+                <canvas id="tracingCanvas" width="600" height="400"></canvas>
+                <div class="object-display" id="objectDisplay">🍎</div>
+            </div>
+
+            <div class="controls-buttons">
+                <button class="action-button clear-button" onclick="clearCanvas()">🔄 Clear</button>
+                <button class="action-button hint-button" onclick="showHint()">💡 Show Path</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Letter to object mappings
+        const letterObjects = {
+            'A': '🍎', 'B': '🦋', 'C': '🐱', 'D': '🐕', 'E': '🐘',
+            'F': '🐸', 'G': '🍇', 'H': '🏠', 'I': '🍦', 'J': '🕹️',
+            'K': '🔑', 'L': '🦁', 'M': '🌙', 'N': '🥜', 'O': '🐙',
+            'P': '🍕', 'Q': '👑', 'R': '🌈', 'S': '⭐', 'T': '🌳',
+            'U': '☂️', 'V': '🎻', 'W': '🍉', 'X': '❌', 'Y': '💛',
+            'Z': '🦓'
+        };
+
+        let currentCase = 'upper';
+        let currentLetter = 'A';
+        let canvas, ctx;
+        let isDrawing = false;
+        let tracedPixels = new Set();
+        let totalPixelsToTrace = 0;
+        let hintShown = false;
+
+        // Audio elements (will fall back to default sounds if custom files don't exist)
+        let correctSound, incorrectSound;
+
+        function initAudio() {
+            correctSound = new Audio();
+            incorrectSound = new Audio();
+            
+            // Try to load custom sounds, fall back to synthesized sounds
+            correctSound.src = 'correct-sound.mp3';
+            incorrectSound.src = 'incorrect-sound.mp3';
+            
+            // Add error handlers to use synthesized sounds if files don't exist
+            correctSound.onerror = function() {
+                console.log('Custom correct sound not found, using synthesized sound');
+            };
+            incorrectSound.onerror = function() {
+                console.log('Custom incorrect sound not found, using synthesized sound');
+            };
+        }
+
+        function playCorrectSound() {
+            if (correctSound.src && !correctSound.error) {
+                correctSound.currentTime = 0;
+                correctSound.play().catch(() => {
+                    playSynthesizedCorrectSound();
+                });
+            } else {
+                playSynthesizedCorrectSound();
+            }
+        }
+
+        function playIncorrectSound() {
+            if (incorrectSound.src && !incorrectSound.error) {
+                incorrectSound.currentTime = 0;
+                incorrectSound.play().catch(() => {
+                    playSynthesizedIncorrectSound();
+                });
+            } else {
+                playSynthesizedIncorrectSound();
+            }
+        }
+
+        function playSynthesizedCorrectSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const frequencies = [523, 659, 784];
+                frequencies.forEach((freq, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    oscillator.type = 'sine';
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime + index * 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + index * 0.1 + 0.05);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.4);
+                    oscillator.start(audioContext.currentTime + index * 0.1);
+                    oscillator.stop(audioContext.currentTime + index * 0.1 + 0.4);
+                });
+            } catch (e) {
+                console.log('Audio not available');
+            }
+        }
+
+        function playSynthesizedIncorrectSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('Audio not available');
+            }
+        }
+
+        function init() {
+            canvas = document.getElementById('tracingCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size responsively
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Initialize letter selector
+            createLetterSelector();
+            
+            // Initialize audio
+            initAudio();
+            
+            // Set up drawing
+            setupDrawing();
+            
+            // Calculate pixels to trace
+            calculateTracingArea();
+            
+            // Handle logo error
+            document.getElementById('gameLogo').onerror = function() {
+                this.style.display = 'none';
+            };
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxWidth = Math.min(window.innerWidth * 0.9, 600);
+            const maxHeight = Math.min(window.innerHeight * 0.5, 400);
+            
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+            
+            drawLetterGuide();
+        }
+
+        function createLetterSelector() {
+            const selector = document.getElementById('letterSelector');
+            selector.innerHTML = '';
+            
+            for (let i = 65; i <= 90; i++) {
+                const letter = String.fromCharCode(i);
+                const button = document.createElement('button');
+                button.className = 'letter-button';
+                button.textContent = currentCase === 'upper' ? letter : letter.toLowerCase();
+                if (letter === currentLetter) button.classList.add('active');
+                button.onclick = () => selectLetter(letter);
+                selector.appendChild(button);
+            }
+        }
+
+        function toggleCase(caseType) {
+            currentCase = caseType;
+            
+            // Update button states
+            document.querySelectorAll('.case-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update letter selector
+            createLetterSelector();
+            
+            // Update display
+            updateLetterDisplay();
+        }
+
+        function selectLetter(letter) {
+            currentLetter = letter;
+            
+            // Update button states
+            document.querySelectorAll('.letter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Reset and update
+            clearCanvas();
+            updateLetterDisplay();
+            calculateTracingArea();
+        }
+
+        function updateLetterDisplay() {
+            const displayLetter = currentCase === 'upper' ? currentLetter : currentLetter.toLowerCase();
+            document.getElementById('letterGuide').textContent = displayLetter;
+            document.getElementById('objectDisplay').textContent = letterObjects[currentLetter];
+            document.getElementById('objectDisplay').classList.remove('show');
+            drawLetterGuide();
+        }
+
+        function drawLetterGuide() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const displayLetter = currentCase === 'upper' ? currentLetter : currentLetter.toLowerCase();
+            
+            // Draw letter outline for tracing
+            ctx.font = `bold ${canvas.height * 0.7}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#4169E1';
+            ctx.lineWidth = 8;
+            ctx.globalAlpha = 0.3;
+            ctx.strokeText(displayLetter, canvas.width / 2, canvas.height / 2);
+            ctx.globalAlpha = 1;
+        }
+
+        function calculateTracingArea() {
+            tracedPixels.clear();
+            
+            // Create a temporary canvas to calculate the letter area
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            const displayLetter = currentCase === 'upper' ? currentLetter : currentLetter.toLowerCase();
+            tempCtx.font = `bold ${canvas.height * 0.7}px Arial`;
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'middle';
+            tempCtx.lineWidth = 8;
+            tempCtx.strokeStyle = 'black';
+            tempCtx.strokeText(displayLetter, canvas.width / 2, canvas.height / 2);
+            
+            // Count pixels in letter outline
+            const imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+            let count = 0;
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) count++;
+            }
+            
+            totalPixelsToTrace = count;
+            updateProgress();
+        }
+
+        function setupDrawing() {
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            if (e.type === 'touchstart') {
+                isDrawing = true;
+            }
+            
+            if (isDrawing) {
+                drawAt(x, y);
+            }
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            drawAt(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            drawAt(x, y);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function drawAt(x, y) {
+            // Draw with finger/mouse
+            ctx.fillStyle = '#FF6B6B';
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Track traced pixels
+            const pixelKey = `${Math.floor(x / 5)}-${Math.floor(y / 5)}`;
+            if (!tracedPixels.has(pixelKey)) {
+                tracedPixels.add(pixelKey);
+                updateProgress();
+            }
+        }
+
+        function updateProgress() {
+            const progress = Math.min(100, Math.floor((tracedPixels.size / (totalPixelsToTrace / 25)) * 100));
+            document.getElementById('progressIndicator').textContent = `Progress: ${progress}% ✏️`;
+            
+            console.log('Progress:', progress, 'Hint shown:', hintShown); // Debug
+            
+            if (progress >= 70 && !hintShown) {
+                console.log('Completing tracing!'); // Debug
+                completeTracing();
+            }
+        }
+
+        function completeTracing() {
+            console.log('Complete tracing called!'); // Debug
+            hintShown = true;
+            
+            playCorrectSound();
+            
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-message';
+            successMsg.textContent = '🎉 Amazing Job! 🎉';
+            document.querySelector('.tracing-area').appendChild(successMsg);
+            setTimeout(() => successMsg.remove(), 2000);
+            
+            // Show object transformation with delay
+            setTimeout(() => {
+                const objectDisplay = document.getElementById('objectDisplay');
+                console.log('Showing object:', objectDisplay.textContent); // Debug
+                objectDisplay.classList.add('show');
+            }, 500);
+            
+            // Create celebration effects
+            createCelebration();
+        }
+
+        function createCelebration() {
+            const emojis = ['⭐', '✨', '🎉', '🎊', '💫', '🌟'];
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    const celebration = document.createElement('div');
+                    celebration.className = 'celebration';
+                    celebration.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    
+                    // Start from center of screen
+                    celebration.style.left = centerX + 'px';
+                    celebration.style.top = centerY + 'px';
+                    
+                    // Random direction outward
+                    const angle = (Math.random() * 360) * (Math.PI / 180);
+                    const distance = 150 + Math.random() * 100;
+                    celebration.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
+                    celebration.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
+                    
+                    document.body.appendChild(celebration);
+                    setTimeout(() => celebration.remove(), 2000);
+                }, i * 80);
+            }
+        }
+
+        function clearCanvas() {
+            console.log('Clear canvas called'); // Debug
+            tracedPixels.clear();
+            hintShown = false;
+            
+            // Hide object
+            const objectDisplay = document.getElementById('objectDisplay');
+            objectDisplay.classList.remove('show');
+            
+            // Clear and redraw
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawLetterGuide();
+            updateProgress();
+        }
+
+        function showHint() {
+            // Flash the letter outline brighter
+            ctx.save();
+            const displayLetter = currentCase === 'upper' ? currentLetter : currentLetter.toLowerCase();
+            ctx.font = `bold ${canvas.height * 0.7}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#FFE135';
+            ctx.lineWidth = 10;
+            ctx.globalAlpha = 0.8;
+            ctx.strokeText(displayLetter, canvas.width / 2, canvas.height / 2);
+            ctx.restore();
+            
+            setTimeout(() => drawLetterGuide(), 1000);
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>
