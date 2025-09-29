@@ -343,7 +343,7 @@
     <div class="game-container">
         <div class="header">
             <div class="logo-container">
-                <img src="granny-bean-logo.png" alt="Granny Bean" class="logo" id="gameLogo">
+                <img src="GrannyBean100x100.png" alt="Granny Bean" class="logo" id="gameLogo">
             </div>
             <div class="game-title">✨ Letter Tracing Magic ✨</div>
         </div>
@@ -405,7 +405,7 @@
             incorrectSound = new Audio();
             
             // Try to load custom sounds, fall back to synthesized sounds
-            correctSound.src = 'correct-sound.mp3';
+            correctSound.src = 'Short Trumpet Fanfare.mp3';
             incorrectSound.src = 'incorrect-sound.mp3';
             
             // Add error handlers to use synthesized sounds if files don't exist
@@ -668,7 +668,7 @@
             // Draw with finger/mouse - much bigger brush
             ctx.fillStyle = '#FF6B6B';
             ctx.beginPath();
-            ctx.arc(x, y, 25, 0, Math.PI * 2);
+            ctx.arc(x, y, 20, 0, Math.PI * 2);
             ctx.fill();
             
             // Track traced pixels with bigger detection area
@@ -682,7 +682,7 @@
         }
 
         function updateProgress() {
-            const progress = Math.min(100, Math.floor((tracedPixels.size / (totalPixelsToTrace / 25)) * 100));
+            const progress = Math.min(100, Math.floor((tracedPixels.size / (totalPixelsToTrace / 20)) * 100));
             document.getElementById('progressIndicator').textContent = `Progress: ${progress}% ✏️`;
             
             console.log('Progress:', progress, 'Hint shown:', hintShown); // Debug
